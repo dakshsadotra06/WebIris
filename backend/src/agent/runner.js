@@ -22,11 +22,22 @@ async function saveStep(supabase, runId, n, reasoning, action, valid, screenshot
 
 async function runAgent(runId, goal, url, supabase) {
   const cdpUrl = process.env.CDP_URL;
+const remoteWs = process.env.BROWSER_WS_URL;
   let browser;
   let page;
   const ownBrowser = !cdpUrl;
 
-  if (cdpUrl) {
+  if (remoteWs) {
+ // Remote browser (browserless.io) - Render par local browser nahi hai
+ try {
+  browser = await chromium.connectOverCDP(remoteWs);
+ } catch (e) {
+  throw new Error('Remote browser connect fail: BROWSER_WS_URL check karo. (' + e.message + ')');
+ }
+ let rctx = browser.contexts()[0];
+ if (!rctx) rctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+ page = await rctx.newPage();
+} else if (cdpUrl) {
     // CDP mode: user's own Chrome (logins intact) — sirf naya tab kholenge.
     try {
       browser = await chromium.connectOverCDP(cdpUrl);
