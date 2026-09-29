@@ -21,6 +21,10 @@ async function execute(page, items, action) {
       if (h) await h.selectOption(action.value || '');
       break;
     }
+    case 'press': {
+      await page.keyboard.press(action.value || 'Enter');
+      break;
+    }
     case 'scroll':
       await page.evaluate(() => window.scrollBy(0, 600));
       break;

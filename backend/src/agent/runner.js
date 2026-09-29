@@ -21,8 +21,27 @@ async function saveStep(supabase, runId, n, reasoning, action, valid, screenshot
 }
 
 async function runAgent(runId, goal, url, supabase) {
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  const cdpUrl = process.env.CDP_URL;
+  let browser;
+  let page;
+  const ownBrowser = !cdpUrl;
+
+  if (cdpUrl) {
+    // CDP mode: user's own Chrome (logins intact) — sirf naya tab kholenge.
+    try {
+      browser = await chromium.connectOverCDP(cdpUrl);
+    } catch (e) {
+      throw new Error('CDP connect fail: kya Chrome --remote-debugging-port=9222 ke saath chal raha hai? (' + e.message + ')');
+    }
+    const context = browser.contexts()[0];
+    if (!context) throw new Error('CDP: Chrome me koi khuli window nahi mili.');
+    page = await context.newPage();
+    // CDP mode: window ka natural size use karo — viewport force karne se
+    // page squeeze hokar dikhta hai (white strip issue)
+  } else {
+    browser = await chromium.launch({ headless: false });
+    page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  }
 
   const shotDir = path.join(__dirname, '..', '..', 'public', 'shots', runId);
   fs.mkdirSync(shotDir, { recursive: true });
@@ -61,7 +80,10 @@ async function runAgent(runId, goal, url, supabase) {
     console.error('runAgent error:', e.message);
     await supabase.from('runs').update({ status: 'failed' }).eq('id', runId);
   } finally {
-    await browser.close();
+    if (ownBrowser && process.env.KEEP_BROWSER_OPEN !== 'true') {
+      await browser.close();
+    }
+    // CDP mode: tab khula rehta hai, auto-close band
   }
 }
 

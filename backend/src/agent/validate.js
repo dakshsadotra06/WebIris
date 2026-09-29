@@ -1,6 +1,6 @@
 // VALIDATE — the AI proposes, the deterministic system disposes.
 // An action only executes if its target exists on the CURRENT page state.
-const ALLOWED = ['click', 'fill', 'select', 'scroll', 'navigate', 'wait', 'complete', 'fail'];
+const ALLOWED = ['click', 'fill', 'select', 'scroll', 'navigate', 'wait', 'press', 'complete', 'fail'];
 const NEEDS_TARGET = ['click', 'fill', 'select'];
 const NEEDS_VALUE = ['fill', 'select'];
 
