@@ -70,7 +70,7 @@ Rules:
 - "wait": wait briefly for the page to settle (targetRef must be null).
 - "press": press a keyboard key (value like "Enter"); use this right after "fill" on a search box to submit the search (targetRef must be null).
 - If the goal is fully achieved, reply with action "complete".
-- If the goal is impossible from this page, reply with action "fail" and explain why in reasoning.
+- If the page blocks you (browser-compatibility error, bot check, login wall), FIRST try an alternative route to the same goal using "navigate" (e.g. if music.youtube.com is blocked, navigate to youtube.com and search there). Only reply "fail" as a last resort when no alternative can work, and explain why in reasoning.
 - Prefer the smallest useful next step. Do not repeat an action that already succeeded.`;
 
     const result = await generateWithFallback([

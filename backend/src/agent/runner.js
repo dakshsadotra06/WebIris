@@ -60,6 +60,7 @@ const remoteWs = process.env.BROWSER_WS_URL;
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
+    let finalStatus = 'done';
     for (let n = 1; n <= MAX_STEPS; n++) {
       // 1. PERCEIVE
       const { items, shotBase64 } = await perceive(page);
@@ -95,10 +96,11 @@ const remoteWs = process.env.BROWSER_WS_URL;
       if (liveStepId) { try { await supabase.from('steps').update({ reasoning: action.reasoning, action, valid: true, screenshot_path: shotPath }).eq('id', liveStepId); } catch (e) {} }
       else await saveStep(supabase, runId, n, action.reasoning, action, true, shotPath);
 
-      if (action.action === 'complete' || action.action === 'fail') break;
+      if (action.action === 'complete') { finalStatus = 'done'; break; }
+      if (action.action === 'fail') { finalStatus = 'failed'; break; }
     }
 
-    await supabase.from('runs').update({ status: 'done' }).eq('id', runId);
+    await supabase.from('runs').update({ status: finalStatus }).eq('id', runId);
   } catch (e) {
     console.error('runAgent error:', e.message);
     await supabase.from('runs').update({ status: 'failed' }).eq('id', runId);
