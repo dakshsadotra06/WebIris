@@ -63,6 +63,16 @@ const remoteWs = process.env.BROWSER_WS_URL;
     for (let n = 1; n <= MAX_STEPS; n++) {
       // 1. PERCEIVE
       const { items, shotBase64 } = await perceive(page);
+      // LIVE_SEE_PATCH: agent abhi kya dekh raha hai - UI par turant dikhega
+      const seePath = `/shots/${runId}/step${n}-see.png`;
+      try { fs.writeFileSync(path.join(shotDir, `step${n}-see.png`), Buffer.from(shotBase64, 'base64')); } catch (e) {}
+      let liveStepId = null;
+      try {
+        const { data: lsRow } = await supabase.from('steps')
+          .insert({ run_id: runId, n, reasoning: 'Perceiving the page...', action: { action: 'perceive' }, valid: true, screenshot_path: seePath })
+          .select('id').single();
+        if (lsRow) liveStepId = lsRow.id;
+      } catch (e) {}
       const elements = items.map((i) => ({ ref: i.ref, desc: i.desc }));
 
       // 2. REASON
@@ -71,7 +81,8 @@ const remoteWs = process.env.BROWSER_WS_URL;
       // 3. VALIDATE — AI proposes, deterministic system validates
       const v = validate(action, items);
       if (!v.ok) {
-        await saveStep(supabase, runId, n, 'Validator blocked: ' + v.reason, action, false, null);
+        if (liveStepId) { try { await supabase.from('steps').update({ reasoning: 'Validator blocked: ' + v.reason, action, valid: false, screenshot_path: null }).eq('id', liveStepId); } catch (e) {} }
+        else await saveStep(supabase, runId, n, 'Validator blocked: ' + v.reason, action, false, null);
         continue;
       }
 
@@ -81,7 +92,8 @@ const remoteWs = process.env.BROWSER_WS_URL;
       // 5. VERIFY — capture the new state as proof
       const shotPath = `/shots/${runId}/step${n}.png`;
       fs.writeFileSync(path.join(shotDir, `step${n}.png`), await page.screenshot());
-      await saveStep(supabase, runId, n, action.reasoning, action, true, shotPath);
+      if (liveStepId) { try { await supabase.from('steps').update({ reasoning: action.reasoning, action, valid: true, screenshot_path: shotPath }).eq('id', liveStepId); } catch (e) {} }
+      else await saveStep(supabase, runId, n, action.reasoning, action, true, shotPath);
 
       if (action.action === 'complete' || action.action === 'fail') break;
     }
